@@ -5,19 +5,15 @@ namespace CustomizePlus
 {
 	using System;
 	using System.Diagnostics;
-	using System.IO.Pipes;
-	using System.Threading.Tasks;
 	using AnamnesisConnect;
-	using AnamnesisConnect.Shared;
 	using Dalamud.IoC;
 	using Dalamud.Logging;
 	using Dalamud.Plugin;
+	using NamedPipeWrapper;
 
 	public sealed class Plugin : IDalamudPlugin
     {
-		private NamedPipeServerStream? server;
-
-		private bool loaded;
+		private readonly INamedPipe pipe;
 
 		public Plugin(
 			[RequiredVersion("1.0")] DalamudPluginInterface pluginInterface)
@@ -25,19 +21,22 @@ namespace CustomizePlus
 			this.PluginInterface = pluginInterface;
 
 			PluginLog.Information("Starting Anamnesis Connect");
-			this.loaded = true;
 
-			Task.Run(this.Run);
+			int procId = Process.GetCurrentProcess().Id;
+			string name = Settings.PipeName + procId;
+
+			Pipe.MessageRecieved += this.Pipe_MessageRecieved;
+			this.pipe = Pipe.Connect(name, true);
 		}
 
 		public DalamudPluginInterface PluginInterface { get; private set; }
 		public string Name => "Anamnesis Connect";
 
-		public async Task Send(string message)
+		public void Send(string message)
 		{
 			try
 			{
-				await Pipe.SendMessage(this.server, message);
+				Pipe.Send(message);
 			}
 			catch (Exception ex)
 			{
@@ -49,75 +48,12 @@ namespace CustomizePlus
         {
 			PluginLog.Information("Disposing Anamnesis Connect");
 
-			this.loaded = false;
-
-			if (this.server?.IsConnected == true)
-				this.server.Disconnect();
-
-			this.server?.Dispose();
+			this.pipe.Stop();
 		}
 
-		private async Task Run()
+		private void Pipe_MessageRecieved(string message)
 		{
-			while (this.loaded)
-			{
-				try
-				{
-					int procId = Process.GetCurrentProcess().Id;
-					string name = Settings.PipeName + procId;
-
-					PluginLog.Information($"Starting server for pipe: {name}");
-					this.server = new(name, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances, PipeTransmissionMode.Message);
-
-					await this.server.WaitForConnectionAsync();
-
-					PluginLog.Information("Server connected");
-
-					_ = Task.Run(async () =>
-					{
-						await Task.Delay(3000);
-						await this.Send("Hello");
-					});
-
-					while (this.server.IsConnected)
-					{
-						string? message = await Pipe.ReadMessage(this.server);
-
-						if (message == null)
-							continue;
-
-						PluginLog.Information("Recieved message: " + message);
-					}
-
-					PluginLog.Information("Server disconnected");
-				}
-				catch (Exception ex)
-				{
-					PluginLog.Error(ex, "Anamnesis Connect server error");
-
-					await Task.Delay(3000);
-
-					if (this.server != null)
-					{
-						if (this.server.IsConnected)
-							this.server.Disconnect();
-
-						this.server.Dispose();
-					}
-				}
-			}
-
-			PluginLog.Information("Shutting down Anamnesis Connect");
-
-			if (this.server != null)
-			{
-				if (this.server.IsConnected)
-					this.server.Disconnect();
-
-				this.server.Dispose();
-			}
-
-			PluginLog.Information("Anamnesis Connect has terminated");
+			PluginLog.Information(message);
 		}
-    }
+	}
 }
