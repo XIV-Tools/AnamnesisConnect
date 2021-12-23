@@ -33,11 +33,11 @@ namespace CustomizePlus
 		public DalamudPluginInterface PluginInterface { get; private set; }
 		public string Name => "Anamnesis Connect";
 
-		public void Send(string message)
+		public async Task Send(string message)
 		{
 			try
 			{
-				Pipe.SendMessage(this.server, message);
+				await Pipe.SendMessage(this.server, message);
 			}
 			catch (Exception ex)
 			{
@@ -67,22 +67,21 @@ namespace CustomizePlus
 					string name = Settings.PipeName + procId;
 
 					PluginLog.Information($"Starting server for pipe: {name}");
-					this.server = new(name);
+					this.server = new(name, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances, PipeTransmissionMode.Message);
 
 					await this.server.WaitForConnectionAsync();
-					this.server.ReadMode = PipeTransmissionMode.Message;
 
 					PluginLog.Information("Server connected");
 
 					_ = Task.Run(async () =>
 					{
 						await Task.Delay(3000);
-						this.Send("Hello");
+						await this.Send("Hello");
 					});
 
 					while (this.server.IsConnected)
 					{
-						string? message = Pipe.ReadMessage(this.server);
+						string? message = await Pipe.ReadMessage(this.server);
 
 						if (message == null)
 							continue;

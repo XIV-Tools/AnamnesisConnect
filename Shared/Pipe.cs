@@ -6,10 +6,11 @@ namespace AnamnesisConnect.Shared
 	using System.IO;
 	using System.IO.Pipes;
 	using System.Text;
+	using System.Threading.Tasks;
 
 	public static class Pipe
 	{
-		public static string? ReadMessage(PipeStream? pipe)
+		public static async Task<string?> ReadMessage(PipeStream? pipe)
 		{
 			if (pipe == null)
 				return null;
@@ -22,8 +23,8 @@ namespace AnamnesisConnect.Shared
 
 			do
 			{
-				int readBytes = pipe.Read(buffer, 0, buffer.Length);
-				ms.Write(buffer, 0, readBytes);
+				int readBytes = await pipe.ReadAsync(buffer, 0, buffer.Length);
+				await ms.WriteAsync(buffer, 0, readBytes);
 			}
 			while (!pipe.IsMessageComplete);
 
@@ -35,7 +36,7 @@ namespace AnamnesisConnect.Shared
 			return Encoding.UTF8.GetString(totalBytes);
 		}
 
-		public static void SendMessage(PipeStream? pipe, string message)
+		public static async Task SendMessage(PipeStream? pipe, string message)
 		{
 			if (pipe == null)
 				return;
@@ -44,7 +45,7 @@ namespace AnamnesisConnect.Shared
 				return;
 
 			byte[] bytes = Encoding.Default.GetBytes(message);
-			pipe.Write(bytes, 0, bytes.Length);
+			await pipe.WriteAsync(bytes, 0, bytes.Length);
 		}
 	}
 }
