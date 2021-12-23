@@ -5,10 +5,10 @@ namespace CustomizePlus
 {
 	using System;
 	using System.Diagnostics;
-	using System.IO;
 	using System.IO.Pipes;
 	using System.Threading.Tasks;
 	using AnamnesisConnect;
+	using AnamnesisConnect.Shared;
 	using Dalamud.IoC;
 	using Dalamud.Logging;
 	using Dalamud.Plugin;
@@ -16,10 +16,8 @@ namespace CustomizePlus
 	public sealed class Plugin : IDalamudPlugin
     {
 		private NamedPipeServerStream? server;
-		private StreamReader? reader;
-		private StreamWriter? writer;
 
-		private bool loaded = true;
+		private bool loaded;
 
 		public Plugin(
 			[RequiredVersion("1.0")] DalamudPluginInterface pluginInterface)
@@ -27,6 +25,7 @@ namespace CustomizePlus
 			this.PluginInterface = pluginInterface;
 
 			PluginLog.Information("Starting Anamnesis Connect");
+			this.loaded = true;
 
 			Task.Run(this.Run);
 		}
@@ -36,17 +35,27 @@ namespace CustomizePlus
 
 		public void Send(string message)
 		{
-			if (this.writer == null)
-				return;
-
-			this.writer.WriteLine(message);
-			this.writer.Flush();
+			try
+			{
+				Pipe.SendMessage(this.server, message);
+			}
+			catch (Exception ex)
+			{
+				PluginLog.Error(ex, "Failed to send message");
+			}
 		}
 
 		public void Dispose()
         {
+			PluginLog.Information("Disposing Anamnesis Connect");
+
 			this.loaded = false;
-        }
+
+			if (this.server?.IsConnected == true)
+				this.server.Disconnect();
+
+			this.server?.Dispose();
+		}
 
 		private async Task Run()
 		{
@@ -61,17 +70,19 @@ namespace CustomizePlus
 					this.server = new(name);
 
 					await this.server.WaitForConnectionAsync();
-
-					this.reader = new StreamReader(this.server);
-					this.writer = new StreamWriter(this.server);
+					this.server.ReadMode = PipeTransmissionMode.Message;
 
 					PluginLog.Information("Server connected");
 
-					this.Send("Hello world");
+					_ = Task.Run(async () =>
+					{
+						await Task.Delay(3000);
+						this.Send("Hello");
+					});
 
 					while (this.server.IsConnected)
 					{
-						string? message = await this.reader.ReadLineAsync();
+						string? message = Pipe.ReadMessage(this.server);
 
 						if (message == null)
 							continue;
@@ -89,11 +100,15 @@ namespace CustomizePlus
 
 					if (this.server != null)
 					{
-						this.server.Disconnect();
+						if (this.server.IsConnected)
+							this.server.Disconnect();
+
 						this.server.Dispose();
 					}
 				}
 			}
+
+			PluginLog.Information("Shutting down Anamnesis Connect");
 
 			if (this.server != null)
 			{
@@ -103,8 +118,7 @@ namespace CustomizePlus
 				this.server.Dispose();
 			}
 
-			this.reader?.Dispose();
-			this.writer?.Dispose();
+			PluginLog.Information("Anamnesis Connect has terminated");
 		}
     }
 }
