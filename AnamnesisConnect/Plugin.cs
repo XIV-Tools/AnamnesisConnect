@@ -1,4 +1,4 @@
-﻿// © Customize+.
+﻿// © Anamnesis Connect.
 // Licensed under the MIT license.
 
 namespace CustomizePlus
@@ -6,18 +6,15 @@ namespace CustomizePlus
 	using System;
 	using System.IO;
 	using System.IO.Pipes;
-	using System.Text;
 	using System.Threading.Tasks;
-	using Dalamud.Game.ClientState;
+	using AnamnesisConnect;
 	using Dalamud.IoC;
 	using Dalamud.Logging;
 	using Dalamud.Plugin;
 
 	public sealed class Plugin : IDalamudPlugin
     {
-		private const string PipeName = "AnamnesisConnectPipe";
-
-		private NamedPipeServerStream server;
+		private NamedPipeServerStream? server;
 		private StreamReader? reader;
 		private StreamWriter? writer;
 
@@ -65,7 +62,7 @@ namespace CustomizePlus
 				try
 				{
 					PluginLog.Information("Starting server.");
-					this.server = new(PipeName);
+					this.server = new(Settings.PipeName);
 
 					await this.server.WaitForConnectionAsync();
 
@@ -91,8 +88,12 @@ namespace CustomizePlus
 				catch (Exception ex)
 				{
 					PluginLog.Error(ex, "Anamnesis Connect server error");
-					this.server.Disconnect();
-					this.server.Dispose();
+
+					if (this.server != null)
+					{
+						this.server.Disconnect();
+						this.server.Dispose();
+					}
 				}
 			}
 		}
