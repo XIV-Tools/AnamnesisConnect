@@ -14,7 +14,7 @@ namespace AnamnesisConnect
 	public class CommFile
 	{
 		private readonly string filePath;
-		private readonly Mutex mutex;
+		private readonly Semaphore semaphore;
 		private bool running;
 
 		public Action<string>? OnCommandRecieved;
@@ -31,14 +31,11 @@ namespace AnamnesisConnect
 
 			try
 			{
-				mutex = new Mutex(true, "AnamnesisConnectMutex_" + proc.Id);
-				mutex.WaitOne();
-				mutex.ReleaseMutex();
-				mutex.ReleaseMutex();
+				semaphore = new Semaphore(1,1, @"Global\AnamnesisConnectMutex_" + proc.Id);
 			}
 			catch (Exception ex)
 			{
-				throw new Exception("Failed to get mutex", ex);
+				throw new Exception("Failed to get semaphor", ex);
 			}
 
 			if (canRead)
@@ -60,17 +57,17 @@ namespace AnamnesisConnect
 		{
 			try
 			{
-				if (!mutex.WaitOne(1000))
+				if (!semaphore.WaitOne(1000))
 					return;
 
 				string current = File.ReadAllText(this.filePath);
 				current += "\n" + action;
 				File.WriteAllText(this.filePath, current);
-				mutex.ReleaseMutex();
+				semaphore.Release();
 			}
 			catch (Exception)
 			{
-				mutex.ReleaseMutex();
+				semaphore.Release();
 				throw;
 			}
 		}
@@ -86,12 +83,12 @@ namespace AnamnesisConnect
 					if (!File.Exists(filePath))
 						continue;
 
-					if (!mutex.WaitOne(1000))
+					if (!semaphore.WaitOne(1000))
 						continue;
 
 					string text = File.ReadAllText(filePath, System.Text.Encoding.UTF8);
 					File.WriteAllText(filePath, string.Empty);
-					mutex.ReleaseMutex();
+					semaphore.Release();
 
 					if (string.IsNullOrEmpty(text))
 						continue;
@@ -109,7 +106,7 @@ namespace AnamnesisConnect
 			}
 			catch (Exception)
 			{
-				mutex.ReleaseMutex();
+				semaphore.Release();
 				throw;
 			}
 		}
