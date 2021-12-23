@@ -5,15 +5,16 @@ namespace CustomizePlus
 {
 	using System;
 	using System.Diagnostics;
+	using System.IO;
+	using System.Reflection;
 	using AnamnesisConnect;
 	using Dalamud.IoC;
 	using Dalamud.Logging;
 	using Dalamud.Plugin;
-	using NamedPipeWrapper;
 
 	public sealed class Plugin : IDalamudPlugin
     {
-		private readonly INamedPipe pipe;
+		private readonly CommFile comm;
 
 		public Plugin(
 			[RequiredVersion("1.0")] DalamudPluginInterface pluginInterface)
@@ -22,38 +23,25 @@ namespace CustomizePlus
 
 			PluginLog.Information("Starting Anamnesis Connect");
 
-			int procId = Process.GetCurrentProcess().Id;
-			string name = Settings.PipeName + procId;
+			string? assemblyLocation = Assembly.GetExecutingAssembly().Location;
+			string? assemblyDirectory = Path.GetDirectoryName(assemblyLocation);
+			string commFilePath = Path.Combine(assemblyDirectory!, "CommFile.txt");
 
-			Pipe.MessageRecieved += this.Pipe_MessageRecieved;
-			this.pipe = Pipe.Connect(name, true);
+			this.comm = new CommFile(commFilePath);
+			this.comm.OnCommandRecieved = (s) =>
+			{
+				PluginLog.Information(s);
+			};
+
+			this.comm.SetAction("TestSomething");
 		}
 
 		public DalamudPluginInterface PluginInterface { get; private set; }
 		public string Name => "Anamnesis Connect";
 
-		public void Send(string message)
-		{
-			try
-			{
-				Pipe.Send(message);
-			}
-			catch (Exception ex)
-			{
-				PluginLog.Error(ex, "Failed to send message");
-			}
-		}
-
 		public void Dispose()
         {
 			PluginLog.Information("Disposing Anamnesis Connect");
-
-			this.pipe.Stop();
-		}
-
-		private void Pipe_MessageRecieved(string message)
-		{
-			PluginLog.Information(message);
 		}
 	}
 }
