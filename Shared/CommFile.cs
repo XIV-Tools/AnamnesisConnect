@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,16 +19,27 @@ namespace AnamnesisConnect
 
 		public Action<string>? OnCommandRecieved;
 
-		public CommFile(string path, bool canRead = true)
+		public CommFile(Process proc, bool canRead = true)
 		{
-			this.filePath = path;
+			if (proc.MainModule == null)
+				throw new Exception("Process has no main module");
 
-			if (!File.Exists(path))
+			this.filePath = Path.GetDirectoryName(proc.MainModule.FileName) + "/acf.txt";
+
+			if (!File.Exists(this.filePath))
+				File.CreateText(this.filePath);
+
+			try
 			{
-				File.CreateText(path);
+				mutex = new Mutex(true, "AnamnesisConnectMutex_" + proc.Id);
+				mutex.WaitOne();
+				mutex.ReleaseMutex();
+				mutex.ReleaseMutex();
 			}
-
-			mutex = new Mutex(true, "AnamnesisConnectMutexC");
+			catch (Exception ex)
+			{
+				throw new Exception("Failed to get mutex", ex);
+			}
 
 			if (canRead)
 			{
@@ -46,43 +58,59 @@ namespace AnamnesisConnect
 
 		public void SetAction(string action)
 		{
-			if (!mutex.WaitOne(1000))
-				return;
+			try
+			{
+				if (!mutex.WaitOne(1000))
+					return;
 
-			string current = File.ReadAllText(this.filePath);
-			current += "\n" + action;
-			File.WriteAllText(this.filePath, current);
-			mutex.ReleaseMutex();
+				string current = File.ReadAllText(this.filePath);
+				current += "\n" + action;
+				File.WriteAllText(this.filePath, current);
+				mutex.ReleaseMutex();
+			}
+			catch (Exception)
+			{
+				mutex.ReleaseMutex();
+				throw;
+			}
 		}
 
 		public void WorkerThread()
 		{
-			while (this.running)
+			try
 			{
-				Thread.Sleep(100);
-
-				if (!File.Exists(filePath))
-					continue;
-
-				if (!mutex.WaitOne(1000))
-					continue;
-				
-				string text = File.ReadAllText(filePath, System.Text.Encoding.UTF8);
-				File.WriteAllText(filePath, string.Empty);
-				mutex.ReleaseMutex();
-
-				if (string.IsNullOrEmpty(text))
-					continue;
-
-				string[] lines = text.Split('\n');
-
-				foreach (string line in lines)
+				while (this.running)
 				{
-					if (string.IsNullOrEmpty(line))
+					Thread.Sleep(100);
+
+					if (!File.Exists(filePath))
 						continue;
 
-					OnCommandRecieved?.Invoke(line.Trim());
+					if (!mutex.WaitOne(1000))
+						continue;
+
+					string text = File.ReadAllText(filePath, System.Text.Encoding.UTF8);
+					File.WriteAllText(filePath, string.Empty);
+					mutex.ReleaseMutex();
+
+					if (string.IsNullOrEmpty(text))
+						continue;
+
+					string[] lines = text.Split('\n');
+
+					foreach (string line in lines)
+					{
+						if (string.IsNullOrEmpty(line))
+							continue;
+
+						OnCommandRecieved?.Invoke(line.Trim());
+					}
 				}
+			}
+			catch (Exception)
+			{
+				mutex.ReleaseMutex();
+				throw;
 			}
 		}
 	}

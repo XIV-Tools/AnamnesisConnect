@@ -3,8 +3,7 @@
 
 namespace CustomizePlus
 {
-	using System.IO;
-	using System.Reflection;
+	using System.Diagnostics;
 	using AnamnesisConnect;
 	using Dalamud.Game.Command;
 	using Dalamud.Game.Gui;
@@ -32,11 +31,8 @@ namespace CustomizePlus
 
 			PluginLog.Information("Starting Anamnesis Connect");
 
-			string? assemblyLocation = Assembly.GetExecutingAssembly().Location;
-			string? assemblyDirectory = Path.GetDirectoryName(assemblyLocation);
-			string commFilePath = Path.Combine(assemblyDirectory!, "CommFile.txt");
-
-			this.comm = new CommFile(commFilePath);
+			Process proc = Process.GetCurrentProcess();
+			this.comm = new CommFile(proc);
 			this.comm.OnCommandRecieved = (s) =>
 			{
 				if (!this.commandManager.ProcessCommand(s))
