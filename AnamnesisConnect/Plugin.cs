@@ -36,12 +36,12 @@ namespace CustomizePlus
 			this.comm.OnCommandRecieved = (s) =>
 			{
 				if (!this.commandManager.ProcessCommand(s))
-					this.SendChat($"Anamneis Connect: {s}", XivChatType.Debug);
+					this.SendChat($"Anamnesis Connect: {s}", XivChatType.Debug);
 
 				PluginLog.Information($"Recieved Anamnesis command: \"{s}\"");
 			};
 
-			this.SendChat("Anamneis Connect has started", XivChatType.Debug);
+			this.SendChat("Anamnesis Connect has started", XivChatType.Debug);
 		}
 
 		public DalamudPluginInterface PluginInterface { get; private set; }
