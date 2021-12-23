@@ -14,6 +14,7 @@ namespace AnamnesisConnect
 	{
 		private readonly string filePath;
 		private readonly Mutex mutex;
+		private bool running;
 
 		public Action<string>? OnCommandRecieved;
 
@@ -30,11 +31,17 @@ namespace AnamnesisConnect
 
 			if (canRead)
 			{
+				this.running = true;
 				ThreadStart ts = new ThreadStart(WorkerThread);
 				Thread t = new Thread(ts);
 				t.IsBackground = true;
 				t.Start();
 			}
+		}
+
+		public void Stop()
+		{
+			this.running = false;
 		}
 
 		public void SetAction(string action)
@@ -50,7 +57,7 @@ namespace AnamnesisConnect
 
 		public void WorkerThread()
 		{
-			while (true)
+			while (this.running)
 			{
 				Thread.Sleep(100);
 
@@ -74,7 +81,7 @@ namespace AnamnesisConnect
 					if (string.IsNullOrEmpty(line))
 						continue;
 
-					OnCommandRecieved?.Invoke(line);
+					OnCommandRecieved?.Invoke(line.Trim());
 				}
 			}
 		}
