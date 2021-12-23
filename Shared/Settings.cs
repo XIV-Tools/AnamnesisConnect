@@ -5,6 +5,6 @@ namespace AnamnesisConnect
 {
 	public static class Settings
 	{
-		public const string PipeName = "AnamnesisConnectPipe";
+		public const string PipeName = "AnamnesisConnectPipe_";
 	}
 }

@@ -4,6 +4,7 @@
 namespace CustomizePlus
 {
 	using System;
+	using System.Diagnostics;
 	using System.IO;
 	using System.IO.Pipes;
 	using System.Threading.Tasks;
@@ -45,14 +46,6 @@ namespace CustomizePlus
 		public void Dispose()
         {
 			this.loaded = false;
-
-			if (this.server != null)
-			{
-				if (this.server.IsConnected)
-					this.server.Disconnect();
-
-				this.server.Dispose();
-			}
         }
 
 		private async Task Run()
@@ -61,8 +54,11 @@ namespace CustomizePlus
 			{
 				try
 				{
-					PluginLog.Information("Starting server.");
-					this.server = new(Settings.PipeName);
+					int procId = Process.GetCurrentProcess().Id;
+					string name = Settings.PipeName + procId;
+
+					PluginLog.Information($"Starting server for pipe: {name}");
+					this.server = new(name);
 
 					await this.server.WaitForConnectionAsync();
 
@@ -89,6 +85,8 @@ namespace CustomizePlus
 				{
 					PluginLog.Error(ex, "Anamnesis Connect server error");
 
+					await Task.Delay(3000);
+
 					if (this.server != null)
 					{
 						this.server.Disconnect();
@@ -96,6 +94,17 @@ namespace CustomizePlus
 					}
 				}
 			}
+
+			if (this.server != null)
+			{
+				if (this.server.IsConnected)
+					this.server.Disconnect();
+
+				this.server.Dispose();
+			}
+
+			this.reader?.Dispose();
+			this.writer?.Dispose();
 		}
     }
 }

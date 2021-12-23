@@ -11,7 +11,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AnamnesisConnect", "AnamnesisConnect\AnamnesisConnect.csproj", "{002AB666-D3E1-42A0-8159-638B28A27C8A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared", "Shared\Shared.csproj", "{B78AEA8A-2CFD-436F-9E7C-3240C0B2E276}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AnamnesisConnect.Shared", "Shared\AnamnesisConnect.Shared.csproj", "{B78AEA8A-2CFD-436F-9E7C-3240C0B2E276}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
