@@ -1,0 +1,13 @@
+{
+  "Author": "XIV Tools",
+  "Name": "Anamnesis Connect",
+  "Punchline": "Connect Anamnesis with Dalamud for a smoother experience",
+  "Description": "",
+  "InternalName": "anamnesisConnect",
+  "ApplicableVersion": "any",
+  "Tags": [
+    "anamnesis",
+    "dalamud",
+    "XIV Tools"
+  ]
+}
