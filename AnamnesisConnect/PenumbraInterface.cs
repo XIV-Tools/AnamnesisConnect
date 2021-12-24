@@ -8,17 +8,103 @@ namespace AnamnesisConnect
 	using Dalamud.Logging;
 	using Dalamud.Plugin;
 
-	public class PenumbraInterface
+	public class PenumbraInterface : IDisposable
 	{
-		private readonly IDalamudPlugin? plugin;
+		private readonly IDalamudPlugin plugin;
+		private readonly Assembly assembly;
+		private readonly object playerWatcher;
+		private readonly object configuration;
+		private readonly object objectReloader;
 		private readonly object collectionManager;
 
 		////  ModManager.Collections.SetCharacterCollection( name, _collections[ tmp ] );
 
-		public PenumbraInterface()
+		public PenumbraInterface(IDalamudPlugin penumbra)
 		{
-			this.plugin = DalamudInterface.GetPlugin("Penumbra");
+			this.plugin = penumbra;
+			this.assembly = this.GetAssembly();
+			this.configuration = this.GetConfiguration();
+			this.objectReloader = this.GetObjectReloader();
 			this.collectionManager = this.GetCollectionManager();
+			this.playerWatcher = this.GetPlayerWatcher();
+
+			// Force disable the player watcher
+			this.SetPlayerWatcherEnabled(false);
+		}
+
+		public void Dispose()
+		{
+			// restore the player watcher setting now that ana is not in charge of refreshes.
+			this.SetPlayerWatcherEnabled(this.GetConfig<bool>("EnablePlayerWatch"));
+		}
+
+		public void Redraw(string actorName)
+		{
+			// Since penumbra has a slash command for this, lets just use it.
+			Plugin.CommandManager?.ProcessCommand($"/penumbra redraw {actorName}");
+		}
+
+		public void SetPlayerWatcherEnabled(bool enable)
+		{
+			this.playerWatcher.GetType()?.GetMethod("SetStatus")?.Invoke(this.playerWatcher, new object?[] { enable });
+		}
+
+		private Assembly GetAssembly()
+		{
+			Assembly? assembly = this.plugin?.GetType().Assembly;
+
+			if (assembly == null)
+				throw new Exception("Failed to get penumbra assembly from plugin");
+
+			return assembly;
+		}
+
+		private object GetConfiguration()
+		{
+			object? config = this.plugin.GetType()?.GetProperty("Config")?.GetValue(null);
+
+			if (config == null)
+				throw new Exception("Failed to get Config");
+
+			return config;
+		}
+
+		private T GetConfig<T>(string name)
+		{
+			PropertyInfo? prop = this.configuration.GetType().GetProperty(name);
+
+			if (prop == null)
+				throw new Exception($"Failed to get Penumbra configuration option: {name}");
+
+			object? val = prop.GetValue(this.configuration);
+
+			if (val is T tVal)
+				return tVal;
+
+			throw new Exception($"Penumbra configuration option: {name} was not type: {typeof(T)}");
+		}
+
+		private object GetPlayerWatcher()
+		{
+			object? objectReloader = this.plugin.GetType()?.GetProperty("PlayerWatcher")?.GetValue(null);
+
+			if (objectReloader == null)
+				throw new Exception("Failed to get Player Watcher");
+
+			return objectReloader;
+		}
+
+		/// <summary>
+		/// Gets the Penumbra.Interop.ObjectReloader.
+		/// </summary>
+		private object GetObjectReloader()
+		{
+			object? objectReloader = this.plugin.GetType()?.GetProperty("ObjectReloader")?.GetValue(this.plugin);
+
+			if (objectReloader == null)
+				throw new Exception("Failed to get object reloader");
+
+			return objectReloader;
 		}
 
 		/// <summary>
@@ -26,19 +112,14 @@ namespace AnamnesisConnect
 		/// </summary>
 		private object GetCollectionManager()
 		{
-			Assembly? penumbraAssembly = this.plugin?.GetType().Assembly;
-
-			if (penumbraAssembly == null)
-				throw new Exception("Failed to get penumbra assembly from plugin");
-
-			Type? modManagerType = penumbraAssembly.GetType("Penumbra.Mods.ModManager");
-			Type? modManagerServiceType = penumbraAssembly.GetType("Penumbra.Util.Service`1[[Penumbra.Mods.ModManager]]");
+			Type? modManagerType = this.assembly.GetType("Penumbra.Mods.ModManager");
+			Type? modManagerServiceType = this.assembly.GetType("Penumbra.Util.Service`1[[Penumbra.Mods.ModManager]]");
 			object? modManager = modManagerServiceType?.GetMethod("Get")?.Invoke(null, null);
 
 			if (modManagerType == null || modManager == null)
 				throw new Exception("Failed to get penumbra mod manager");
 
-			Type? collectionManagerType = penumbraAssembly.GetType("Penumbra.Mods.CollectionManager");
+			Type? collectionManagerType = this.assembly.GetType("Penumbra.Mods.CollectionManager");
 			object? collectionManager = modManagerType.GetProperty("Collections")?.GetValue(modManager);
 
 			if (collectionManagerType == null || collectionManager == null)
@@ -46,5 +127,6 @@ namespace AnamnesisConnect
 
 			return (collectionManager, collectionManagerType);
 		}
+
 	}
 }

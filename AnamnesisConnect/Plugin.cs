@@ -5,75 +5,98 @@ namespace AnamnesisConnect
 {
 	using System;
 	using System.Diagnostics;
+	using System.Text.RegularExpressions;
 	using Dalamud.Game.Command;
 	using Dalamud.Game.Gui;
 	using Dalamud.Game.Text;
-	using Dalamud.Game.Text.SeStringHandling;
-	using Dalamud.Game.Text.SeStringHandling.Payloads;
 	using Dalamud.IoC;
 	using Dalamud.Logging;
 	using Dalamud.Plugin;
 
 	public sealed class Plugin : IDalamudPlugin
     {
-		private readonly ChatGui? chat;
+		public static DalamudPluginInterface? PluginInterface;
+		public static ChatGui? Chat;
+		public static CommandManager? CommandManager;
+		public static PenumbraInterface? PenumbraInterface;
+
 		private readonly CommFile comm;
-		private readonly CommandManager commandManager;
-		private readonly PenumbraInterface? penumbraInterface;
 
 		public Plugin(
 			[RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
 			[RequiredVersion("1.0")] ChatGui chatGui,
 			[RequiredVersion("1.0")] CommandManager commandManager)
         {
-			this.PluginInterface = pluginInterface;
-			this.chat = chatGui;
-			this.commandManager = commandManager;
+			PluginInterface = pluginInterface;
+			Chat = chatGui;
+			CommandManager = commandManager;
 
 			PluginLog.Information("Starting Anamnesis Connect");
 
 			Process proc = Process.GetCurrentProcess();
 			this.comm = new CommFile(proc);
-			this.comm.OnCommandRecieved = (s) =>
-			{
-				if (!this.commandManager.ProcessCommand(s))
-					this.SendChat($"Anamnesis Connect: {s}", XivChatType.Debug);
-
-				PluginLog.Information($"Recieved Anamnesis command: \"{s}\"");
-			};
+			this.comm.OnCommandRecieved = this.ProcessCommand;
 
 			try
 			{
-				this.penumbraInterface = new();
+				IDalamudPlugin? penumbra = DalamudInterface.GetPlugin("Penumbra");
+				if (penumbra != null)
+				{
+					PenumbraInterface = new(penumbra);
+				}
 			}
 			catch (Exception ex)
 			{
 				PluginLog.Error(ex, "Error in penumbra interface");
 			}
 
-			this.SendChat("Anamnesis Connect has started", XivChatType.Debug);
+			Chat?.Print("Anamnesis Connect has started", XivChatType.Debug);
 		}
 
-		public DalamudPluginInterface PluginInterface { get; private set; }
 		public string Name => "Anamnesis Connect";
-
-		public void SendChat(string message, XivChatType chatType = XivChatType.Debug)
-		{
-			if (this.chat == null)
-				return;
-
-			TextPayload textPayload = new(message);
-			SeString seString = new(textPayload);
-			XivChatEntry entry = new();
-			entry.Message = seString;
-			entry.Type = chatType;
-			this.chat.PrintChat(entry);
-		}
 
 		public void Dispose()
         {
 			PluginLog.Information("Disposing Anamnesis Connect");
 			this.comm?.Stop();
+		}
+
+		private void ProcessCommand(string str)
+		{
+			if (str.StartsWith("/"))
+			{
+				CommandManager?.ProcessCommand(str);
+			}
+			else if (str.StartsWith("-"))
+			{
+				// split by spaces unless in quotes.
+				string[] parts = Regex.Split(str, "(?<=^[^\"]*(?:\"[^\"]*\"[^\"]*)*) (?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
+
+				for (int i = 0; i < parts.Length; i++)
+					parts[i] = parts[i].Trim().Replace("\"", string.Empty);
+
+				try
+				{
+					switch (parts[0])
+					{
+						case "-penumbra":
+						{
+							PenumbraInterface?.Redraw(parts[1]);
+							break;
+						}
+					}
+				}
+				catch (Exception ex)
+				{
+					PluginLog.Error(ex, $"Failed to process Anamnesis command: \"{str}\"");
+				}
+			}
+			else
+			{
+				Chat?.Print(this.Name + ": " + str, XivChatType.Debug);
+			}
+
+			PluginLog.Information($"Recieved Anamnesis command: \"{str}\"");
 		}
 	}
 }
