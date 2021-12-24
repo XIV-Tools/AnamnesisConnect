@@ -1,10 +1,10 @@
 ﻿// © Anamnesis Connect.
 // Licensed under the MIT license.
 
-namespace CustomizePlus
+namespace AnamnesisConnect
 {
+	using System;
 	using System.Diagnostics;
-	using AnamnesisConnect;
 	using Dalamud.Game.Command;
 	using Dalamud.Game.Gui;
 	using Dalamud.Game.Text;
@@ -16,9 +16,10 @@ namespace CustomizePlus
 
 	public sealed class Plugin : IDalamudPlugin
     {
+		private readonly ChatGui? chat;
 		private readonly CommFile comm;
-		private readonly ChatGui chat;
 		private readonly CommandManager commandManager;
+		private readonly PenumbraInterface? penumbraInterface;
 
 		public Plugin(
 			[RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
@@ -41,6 +42,15 @@ namespace CustomizePlus
 				PluginLog.Information($"Recieved Anamnesis command: \"{s}\"");
 			};
 
+			try
+			{
+				this.penumbraInterface = new();
+			}
+			catch (Exception ex)
+			{
+				PluginLog.Error(ex, "Error in penumbra interface");
+			}
+
 			this.SendChat("Anamnesis Connect has started", XivChatType.Debug);
 		}
 
@@ -49,6 +59,9 @@ namespace CustomizePlus
 
 		public void SendChat(string message, XivChatType chatType = XivChatType.Debug)
 		{
+			if (this.chat == null)
+				return;
+
 			TextPayload textPayload = new(message);
 			SeString seString = new(textPayload);
 			XivChatEntry entry = new();
