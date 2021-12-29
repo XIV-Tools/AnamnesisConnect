@@ -6,6 +6,7 @@ namespace AnamnesisConnect
 	using System;
 	using System.Diagnostics;
 	using System.Text.RegularExpressions;
+	using System.Threading.Tasks;
 	using Dalamud.Game.Command;
 	using Dalamud.Game.Gui;
 	using Dalamud.Game.Text;
@@ -34,8 +35,11 @@ namespace AnamnesisConnect
 			PluginLog.Information("Starting Anamnesis Connect");
 
 			Process proc = Process.GetCurrentProcess();
-			this.comm = new CommFile(proc);
-			this.comm.OnCommandRecieved = this.ProcessCommand;
+			this.comm = new CommFile(proc, CommFile.Mode.Server);
+			this.comm.OnLog = (s) => PluginLog.Information(s);
+			this.comm.OnError = (ex) => PluginLog.Error(ex, "Anamnesis Connect Error");
+
+			Task.Run(this.Start);
 
 			try
 			{
@@ -59,6 +63,17 @@ namespace AnamnesisConnect
         {
 			PluginLog.Information("Disposing Anamnesis Connect");
 			this.comm?.Stop();
+		}
+
+		private async Task Start()
+		{
+			PluginLog.Information($"Connecting");
+			bool connected = await this.comm.Connect();
+
+			if (!connected)
+			{
+				PluginLog.Error($"Failed to connect");
+			}
 		}
 
 		private void ProcessCommand(string str)
