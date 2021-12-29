@@ -153,6 +153,10 @@ namespace AnamnesisConnect
 					semaphore.Release();
 				}
 			}
+			else
+			{
+				this.Send(Actions.Disconnect);
+			}
 		}
 
 		public void Send(Actions action, params string[] parameters)
@@ -282,7 +286,10 @@ namespace AnamnesisConnect
 				{
 					for (int i = 1; i < parts.Length; i++)
 					{
-						param[i - 1] = parts[i];
+						string part = parts[i];
+						part = part.Trim('\"');
+						part = part.Trim();
+						param[i - 1] = part;
 					}
 				}
 

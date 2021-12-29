@@ -39,6 +39,9 @@ namespace AnamnesisConnect
 			this.comm.OnLog = (s) => PluginLog.Information(s);
 			this.comm.OnError = (ex) => PluginLog.Error(ex, "Anamnesis Connect Error");
 
+			this.comm.AddHandler(Actions.Handshake, () => Chat?.Print("Anamnesis Connected"));
+			this.comm.AddHandler(Actions.Disconnect, () => Chat?.Print("Anamnesis Disconnected"));
+
 			Task.Run(this.Start);
 
 			try
@@ -47,6 +50,7 @@ namespace AnamnesisConnect
 				if (penumbra != null)
 				{
 					PenumbraInterface = new(penumbra);
+					this.comm.AddHandler(Actions.PenumbraRedraw, PenumbraInterface.Redraw);
 				}
 			}
 			catch (Exception ex)
@@ -74,44 +78,6 @@ namespace AnamnesisConnect
 			{
 				PluginLog.Error($"Failed to connect");
 			}
-		}
-
-		private void ProcessCommand(string str)
-		{
-			if (str.StartsWith("/"))
-			{
-				CommandManager?.ProcessCommand(str);
-			}
-			else if (str.StartsWith("-"))
-			{
-				// split by spaces unless in quotes.
-				string[] parts = Regex.Split(str, "(?<=^[^\"]*(?:\"[^\"]*\"[^\"]*)*) (?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
-
-				for (int i = 0; i < parts.Length; i++)
-					parts[i] = parts[i].Trim().Replace("\"", string.Empty);
-
-				try
-				{
-					switch (parts[0])
-					{
-						case "-penumbra":
-						{
-							PenumbraInterface?.Redraw(parts[1]);
-							break;
-						}
-					}
-				}
-				catch (Exception ex)
-				{
-					PluginLog.Error(ex, $"Failed to process Anamnesis command: \"{str}\"");
-				}
-			}
-			else
-			{
-				Chat?.Print(this.Name + ": " + str, XivChatType.Debug);
-			}
-
-			PluginLog.Information($"Recieved Anamnesis command: \"{str}\"");
 		}
 	}
 }
