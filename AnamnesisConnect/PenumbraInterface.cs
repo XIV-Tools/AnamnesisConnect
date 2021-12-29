@@ -27,15 +27,11 @@ namespace AnamnesisConnect
 			this.objectReloader = this.GetObjectReloader();
 			this.collectionManager = this.GetCollectionManager();
 			this.playerWatcher = this.GetPlayerWatcher();
-
-			// Force disable the player watcher
-			this.SetPlayerWatcherEnabled(false);
 		}
 
 		public void Dispose()
 		{
-			// restore the player watcher setting now that ana is not in charge of refreshes.
-			this.SetPlayerWatcherEnabled(this.GetConfig<bool>("EnablePlayerWatch"));
+			this.RestorePlayerWatchEnabled();
 		}
 
 		public void Redraw(string actorName)
@@ -47,6 +43,11 @@ namespace AnamnesisConnect
 		public void SetPlayerWatcherEnabled(bool enable)
 		{
 			this.playerWatcher.GetType()?.GetMethod("SetStatus")?.Invoke(this.playerWatcher, new object?[] { enable });
+		}
+
+		public void RestorePlayerWatchEnabled()
+		{
+			this.SetPlayerWatcherEnabled(this.GetConfig<bool>("EnablePlayerWatch"));
 		}
 
 		private Assembly GetAssembly()

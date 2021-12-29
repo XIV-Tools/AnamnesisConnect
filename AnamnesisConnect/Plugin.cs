@@ -39,8 +39,8 @@ namespace AnamnesisConnect
 			this.comm.OnLog = (s) => PluginLog.Information(s);
 			this.comm.OnError = (ex) => PluginLog.Error(ex, "Anamnesis Connect Error");
 
-			this.comm.AddHandler(Actions.Handshake, () => Chat?.Print("Anamnesis Connected"));
-			this.comm.AddHandler(Actions.Disconnect, () => Chat?.Print("Anamnesis Disconnected"));
+			this.comm.AddHandler(Actions.Handshake, this.OnConnect);
+			this.comm.AddHandler(Actions.Disconnect, this.OnDisconnect);
 
 			Task.Run(this.Start);
 
@@ -67,6 +67,18 @@ namespace AnamnesisConnect
         {
 			PluginLog.Information("Disposing Anamnesis Connect");
 			this.comm?.Stop();
+		}
+
+		private void OnConnect()
+		{
+			Chat?.Print("Anamnesis Connected");
+			PenumbraInterface?.SetPlayerWatcherEnabled(false);
+		}
+
+		private void OnDisconnect()
+		{
+			Chat?.Print("Anamnesis Disconnected");
+			PenumbraInterface?.RestorePlayerWatchEnabled();
 		}
 
 		private async Task Start()
