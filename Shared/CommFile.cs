@@ -132,6 +132,9 @@ namespace AnamnesisConnect
 
 		public void Stop()
 		{
+			if (!this.running)
+				return;
+
 			this.running = false;
 
 			if (this.mode == Mode.Server)
