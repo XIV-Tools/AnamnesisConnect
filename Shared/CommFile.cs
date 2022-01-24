@@ -141,8 +141,15 @@ namespace AnamnesisConnect
 					if (!semaphore.WaitOne(1000))
 						throw new Exception("Failed to get server semaphore for file deletion");
 
-					File.Delete(this.serverToClientPath);
-					File.Delete(this.clientToServerPath);
+					if (File.Exists(this.serverToClientPath))
+					{
+						File.Delete(this.serverToClientPath);
+					}
+
+					if (File.Exists(this.clientToServerPath))
+					{
+						File.Delete(this.clientToServerPath);
+					}
 				}
 				catch (Exception)
 				{
